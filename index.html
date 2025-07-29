@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuidados da Joselia</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+        }
+        
+        .card {
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.10);
+            background: rgba(255,255,255,0.95);
+            border: 1.5px solid #f1f5f9;
+            transition: box-shadow 0.3s, transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 16px 32px 0 rgba(31, 38, 135, 0.13);
+        }
+        .tab-active {
+            color: #f97316;
+            border-bottom: 3px solid #f97316;
+            background: #fff7ed;
+            border-radius: 12px 12px 0 0;
+        }
+        #tabToday, #tabHistory {
+            border-radius: 12px 12px 0 0;
+            margin-right: 4px;
+        }
+        #tabHistory {
+            margin-left: 4px;
+        }
+        #todayTasksSection, #historyTasksSection {
+            animation: fadeIn 0.5s;
+        }
+        .task-item {
+            transition: box-shadow 0.2s, border 0.2s, background 0.2s;
+            border-left: 5px solid #f1f5f9;
+            background: #f8fafc;
+            box-shadow: 0 2px 8px 0 rgba(31, 38, 135, 0.04);
+        }
+        .task-item.completed {
+            border-left: 5px solid #10b981;
+            background: linear-gradient(90deg, #f0fdf4 80%, #d1fae5 100%);
+        }
+        .task-item .font-medium {
+            font-size: 1.1rem;
+        }
+        .task-item .text-xs {
+            font-size: 0.85rem;
+        }
+        .task-item .line-through {
+            text-decoration-thickness: 2px;
+        }
+        .complete-task-btn {
+            background: linear-gradient(90deg, #10b981 60%, #34d399 100%);
+            color: #fff;
+            font-weight: 500;
+            box-shadow: 0 2px 8px 0 rgba(16,185,129,0.08);
+            border: none;
+        }
+        .complete-task-btn:hover {
+            background: linear-gradient(90deg, #059669 60%, #10b981 100%);
+            transform: scale(1.05);
+        }
+        #showAddTaskBtn {
+            background: linear-gradient(90deg, #fff7ed 60%, #fef3c7 100%);
+            color: #f97316;
+            border: 1.5px solid #fcd34d;
+            font-weight: 500;
+        }
+        #showAddTaskBtn:hover {
+            background: #fef3c7;
+            color: #ea580c;
+            border-color: #fbbf24;
+            transform: scale(1.03);
+        }
+        #addTaskFormContainer {
+            border: 1.5px solid #fcd34d;
+            background: #fffbe9;
+        }
+        #addTaskForm input, #addTaskForm select {
+            background: #fff;
+            border: 1.5px solid #f1f5f9;
+        }
+        #addTaskForm input:focus, #addTaskForm select:focus {
+            border-color: #f97316;
+            box-shadow: 0 0 0 2px #fcd34d44;
+        }
+        #historyList .task-item {
+            background: #f0fdf4;
+            border-left: 5px solid #10b981;
+        }
+        #historyList .task-item .font-medium {
+            color: #059669;
+        }
+        #historyDateFilter {
+            border-radius: 8px;
+            border: 1.5px solid #e2e8f0;
+            background: #f8fafc;
+        }
+        @media (max-width: 768px) {
+            .card, #addTaskFormContainer {
+                padding: 1rem;
+            }
+            .task-item {
+                font-size: 0.97rem;
+            }
+            .flex, .grid {
+                flex-direction: column;
+            }
+        }
+        
+        .task-item {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        
+        .task-item:hover {
+            background-color: #f8fafc;
+        }
+        
+        .task-item.completed {
+            border-left: 4px solid #10b981;
+            background-color: #f0fdf4;
+        }
+        
+        .btn-primary {
+            background-color: #f97316;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            background-color: #ea580c;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background-color: #f1f5f9;
+            color: #475569;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background-color: #10b981;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-success:hover {
+            background-color: #059669;
+            transform: translateY(-1px);
+        }
+        
+        .loader {
+            border-top-color: #f97316;
+            animation: spinner 1.5s linear infinite;
+        }
+        
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .checkbox-container {
+            display: block;
+            position: relative;
+            padding-left: 35px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 24px;
+            width: 24px;
+            background-color: #fff;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        
+        .checkbox-container:hover input ~ .checkmark {
+            border-color: #cbd5e1;
+        }
+        
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+        
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+        
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+        
+        .checkbox-container .checkmark:after {
+            left: 8px;
+            top: 4px;
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        
+        .health-input {
+            transition: all 0.3s ease;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        
+        .health-input:focus {
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.7s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 flex items-center justify-center z-50 bg-gradient-to-br from-orange-100 via-pink-100 to-orange-200">
+        <div class="flex flex-col items-center animate-fade-in">
+            <div class="relative mb-6">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-orange-400 to-pink-400 flex items-center justify-center shadow-lg animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
+                    <span class="inline-block w-4 h-4 bg-orange-400 rounded-full animate-bounce"></span>
+                </div>
+            </div>
+            <h2 class="text-3xl font-bold text-orange-600 mb-2">Carregando...</h2>
+            <p class="text-lg text-gray-600">Aguarde, estamos preparando seus cuidados!</p>
+        </div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="authContainer" class="min-h-screen flex items-center justify-center py-12 px-4 hidden">
+        <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
+            <div class="text-center">
+                <div class="w-24 h-24 rounded-full gradient-bg mx-auto flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+                <h1 class="mt-6 text-3xl font-bold text-gray-800">Cuidados da Joselia</h1>
+                <p class="mt-2 text-gray-600">Organização familiar de tarefas e saúde</p>
+            </div>
+            
+            <div class="flex justify-center space-x-8">
+                <button id="loginTabBtn" class="px-4 py-2 font-medium text-gray-700 border-b-2 border-orange-500 tab-active">Login</button>
+                <button id="registerTabBtn" class="px-4 py-2 font-medium text-gray-500">Cadastro</button>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="loginForm" class="mt-8 space-y-6">
+                <div>
+                    <label for="loginEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input id="loginEmail" name="email" type="email" required class="health-input w-full px-4 py-3 focus:outline-none">
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                    <input id="loginPassword" name="password" type="password" required class="health-input w-full px-4 py-3 focus:outline-none">
+                </div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white btn-primary">
+                        Entrar
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Register Form -->
+            <form id="registerForm" class="mt-8 space-y-6 hidden">
+                <div>
+                    <label for="registerName" class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                    <input id="registerName" name="name" type="text" required class="health-input w-full px-4 py-3 focus:outline-none">
+                </div>
+                <div>
+                    <label for="registerEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input id="registerEmail" name="email" type="email" required class="health-input w-full px-4 py-3 focus:outline-none">
+                </div>
+                <div>
+                    <label for="registerPassword" class="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                    <input id="registerPassword" name="password" type="password" required class="health-input w-full px-4 py-3 focus:outline-none">
+                </div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white btn-primary">
+                        Cadastrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-sm sticky top-0 z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-800">Cuidados da Joselia</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button id="notificationBtn" class="p-2 rounded-full hover:bg-gray-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span id="notificationBadge" class="notification-badge hidden">0</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                            <span id="userInitial" class="text-orange-600 font-semibold"></span>
+                        </div>
+                        <span id="userDisplayName" class="text-gray-700 font-medium hidden md:block"></span>
+                    </div>
+                    <button id="logoutBtn" class="px-4 py-2 rounded-lg text-sm font-medium text-white btn-primary hidden md:block">
+                        Sair
+                    </button>
+                    <button id="mobileMenuBtn" class="p-2 rounded-md md:hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div id="mobileMenu" class="md:hidden hidden bg-white border-t border-gray-200">
+                <div class="px-4 py-3">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                            <span class="text-orange-600 font-semibold mobile-user-initial"></span>
+                        </div>
+                        <span class="text-gray-700 font-medium mobile-user-name"></span>
+                    </div>
+                    <button id="mobileLogoutBtn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white btn-primary">
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Date Display -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-800" id="currentDate"></h2>
+                    <p class="text-gray-500" id="currentDay"></p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Última atualização</p>
+                    <p class="text-gray-700 font-medium" id="lastUpdate"></p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Tasks Section -->
+                <section class="lg:col-span-2">
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <!-- Tabs for Today/History -->
+                        <div class="flex mb-6 border-b border-gray-200">
+                            <button id="tabToday" class="px-4 py-2 font-medium text-gray-700 border-b-2 tab-active focus:outline-none flex-1 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                Tarefas do Dia
+                            </button>
+                            <button id="tabHistory" class="px-4 py-2 font-medium text-gray-500 border-b-2 border-transparent focus:outline-none flex-1 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                Concluídas
+                            </button>
+                        </div>
+                        <!-- Tarefas do Dia -->
+                        <div id="todayTasksSection">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                    Tarefas de Hoje
+                                </h2>
+                                <div class="flex space-x-2">
+                                    <span id="completedTasksCount" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">0 concluídas</span>
+                                    <span id="pendingTasksCount" class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">0 pendentes</span>
+                                </div>
+                            </div>
+                            <div class="mb-4 text-gray-500 text-sm flex items-center gap-2">
+                                <svg class="h-4 w-4 text-orange-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" /></svg>
+                                Marque as tarefas conforme for concluindo. Tarefas concluídas ficam verdes!
+                            </div>
+                            <!-- Tasks Progress -->
+                            <div class="mb-6">
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-600">Progresso</span>
+                                    <span id="progressPercentage" class="font-medium">0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div id="progressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <!-- Tasks List -->
+                            <div id="tasksList" class="space-y-3 mb-8 max-h-96 overflow-y-auto pr-2">
+                                <!-- Tasks will be loaded here -->
+                                <div class="flex justify-center py-8">
+                                    <div class="loader h-10 w-10 rounded-full border-4 border-gray-200"></div>
+                                </div>
+                            </div>
+                            <!-- Add Task Button -->
+                            <button id="showAddTaskBtn" class="w-full flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Adicionar Nova Tarefa
+                            </button>
+                        </div>
+                        <!-- Histórico de Tarefas Concluídas -->
+                        <div id="historyTasksSection" class="hidden">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Histórico de Concluídas
+                                </h2>
+                                <div class="flex space-x-2">
+                                    <input id="historyDateFilter" type="date" class="health-input px-2 py-1 text-sm" />
+                                </div>
+                            </div>
+                            <div class="mb-4 text-gray-500 text-sm flex items-center gap-2">
+                                <svg class="h-4 w-4 text-green-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                Veja aqui todas as tarefas já concluídas, filtrando por data se quiser.
+                            </div>
+                            <div id="historyList" class="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                <!-- Histórico será carregado aqui -->
+                                <div class="flex justify-center py-8">
+                                    <div class="loader h-10 w-10 rounded-full border-4 border-gray-200"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Add Task Form (Hidden by default) -->
+                        <div id="addTaskFormContainer" class="bg-white rounded-2xl shadow-md p-6 mt-6 card hidden">
+                            <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Nova Tarefa
+                            </h3>
+                            <form id="addTaskForm" class="space-y-4">
+                                <div>
+                                    <label for="taskDescription" class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                    <input id="taskDescription" type="text" required class="health-input w-full px-4 py-3 focus:outline-none" placeholder="O que precisa ser feito?">
+                                </div>
+                                <div>
+                                    <label for="taskAssignee" class="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                                    <input id="taskAssignee" type="text" required class="health-input w-full px-4 py-3 focus:outline-none" placeholder="Quem vai fazer esta tarefa?">
+                                </div>
+                                <div>
+                                    <label for="taskFrequency" class="block text-sm font-medium text-gray-700 mb-1">Frequência</label>
+                                    <select id="taskFrequency" class="health-input w-full px-4 py-3 focus:outline-none">
+                                        <option value="daily">Diária</option>
+                                        <option value="weekly">Semanal</option>
+                                    </select>
+                                </div>
+                                <div class="flex space-x-3">
+                                    <button type="button" id="cancelAddTaskBtn" class="flex-1 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" class="flex-1 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white btn-primary">
+                                        Adicionar Tarefa
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Health Section -->
+                <section class="lg:col-span-1">
+                    <div class="bg-white rounded-2xl shadow-md p-6 card">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                </svg>
+                                Saúde da Joselia
+                            </h2>
+                        </div>
+                        
+                        <!-- Health Form -->
+                        <form id="healthForm" class="space-y-4 mb-6">
+                            <div>
+                                <label for="glucose" class="block text-sm font-medium text-gray-700 mb-1">Glicose (mg/dL)</label>
+                                <input id="glucose" type="number" class="health-input w-full px-4 py-3 focus:outline-none" placeholder="Ex: 110">
+                            </div>
+                            <div>
+                                <label for="pressure" class="block text-sm font-medium text-gray-700 mb-1">Pressão (ex: 12x8)</label>
+                                <input id="pressure" type="text" class="health-input w-full px-4 py-3 focus:outline-none" placeholder="Ex: 12x8">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Remédios Tomados</label>
+                                <div id="medicationsList" class="space-y-2">
+                                    <div class="flex space-x-2">
+                                        <input type="text" placeholder="Nome do remédio" class="medication-name flex-1 health-input px-4 py-3 focus:outline-none">
+                                        <input type="time" class="medication-time w-24 health-input px-2 py-3 focus:outline-none">
+                                    </div>
+                                </div>
+                                <button type="button" id="addMedicationBtn" class="mt-2 inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                    </svg>
+                                    Adicionar Remédio
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <button type="button" id="generateReportBtn" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white btn-primary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Gerar Boletim
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Health Report -->
+                        <div id="healthReport" class="bg-gray-50 p-4 rounded-lg hidden">
+                            <h3 class="text-lg font-medium text-gray-800 mb-2 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Boletim da Joselia
+                            </h3>
+                            <div id="reportContent" class="text-gray-700 whitespace-pre-line bg-white p-3 rounded-lg border border-gray-200 mb-3"></div>
+                            <button id="shareWhatsappBtn" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                </svg>
+                                Enviar no WhatsApp
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- Notifications Panel (Hidden by default) -->
+            <div id="notificationsPanel" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-20 hidden">
+                <div class="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl">
+                    <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">Notificações</h3>
+                        <button id="closeNotificationsBtn" class="p-2 rounded-full hover:bg-gray-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="notificationsList" class="p-4 space-y-3 overflow-y-auto" style="max-height: calc(100vh - 60px);">
+                        <!-- Notifications will be loaded here -->
+                        <div class="flex justify-center py-8">
+                            <div class="loader h-8 w-8 rounded-full border-4 border-gray-200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDIeImR1lRYdEBCVhcB2gdm2NIogUEh1FU",
+            authDomain: "joselia-24972.firebaseapp.com",
+            projectId: "joselia-24972",
+            storageBucket: "joselia-24972.firebasestorage.app",
+            messagingSenderId: "62542621074",
+            appId: "1:62542621074:web:16d0b1aaef8a41c2a7794b",
+            measurementId: "G-C2J3CJ3LSJ"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // DOM Elements
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const authContainer = document.getElementById('authContainer');
+        const appContainer = document.getElementById('appContainer');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const loginTabBtn = document.getElementById('loginTabBtn');
+        const registerTabBtn = document.getElementById('registerTabBtn');
+        const userDisplayName = document.getElementById('userDisplayName');
+        const userInitial = document.getElementById('userInitial');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const currentDateEl = document.getElementById('currentDate');
+        const currentDayEl = document.getElementById('currentDay');
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        const tasksList = document.getElementById('tasksList');
+        const completedTasksCount = document.getElementById('completedTasksCount');
+        const pendingTasksCount = document.getElementById('pendingTasksCount');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercentage = document.getElementById('progressPercentage');
+        const showAddTaskBtn = document.getElementById('showAddTaskBtn');
+        const addTaskFormContainer = document.getElementById('addTaskFormContainer');
+        const addTaskForm = document.getElementById('addTaskForm');
+        const cancelAddTaskBtn = document.getElementById('cancelAddTaskBtn');
+        const medicationsList = document.getElementById('medicationsList');
+        const addMedicationBtn = document.getElementById('addMedicationBtn');
+        const generateReportBtn = document.getElementById('generateReportBtn');
+        const healthReport = document.getElementById('healthReport');
+        const reportContent = document.getElementById('reportContent');
+        const shareWhatsappBtn = document.getElementById('shareWhatsappBtn');
+        const notificationBtn = document.getElementById('notificationBtn');
+        const notificationsPanel = document.getElementById('notificationsPanel');
+        const closeNotificationsBtn = document.getElementById('closeNotificationsBtn');
+        const notificationsList = document.getElementById('notificationsList');
+        const notificationBadge = document.getElementById('notificationBadge');
+        
+        // Helper Functions
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+        
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+        
+        function showError(message) {
+            alert(message);
+        }
+        
+        function formatDate(date) {
+            return new Intl.DateTimeFormat('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            }).format(date);
+        }
+        
+        function formatTime(date) {
+            return new Intl.DateTimeFormat('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        }
+        
+        function formatDateTime(date) {
+            return `${formatDate(date)} - ${formatTime(date)}`;
+        }
+        
+        function getDayName(date) {
+            const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            return days[date.getDay()];
+        }
+        
+        function getMonthName(date) {
+            const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            return months[date.getMonth()];
+        }
+        
+        function formatDateHeader(date) {
+            const day = date.getDate();
+            const month = getMonthName(date);
+            const year = date.getFullYear();
+            return `${day} de ${month}, ${year}`;
+        }
+        
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        }
+        
+        function updateDateTime() {
+            const now = new Date();
+            currentDateEl.textContent = formatDateHeader(now);
+            currentDayEl.textContent = getDayName(now);
+            lastUpdateEl.textContent = formatTime(now);
+        }
+        
+        // Auth State Change
+        auth.onAuthStateChanged(user => {
+            hideLoading();
+            
+            if (user) {
+                // User is signed in
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                
+                // Get user profile
+                db.collection('users').doc(user.uid).get().then(doc => {
+                    if (doc.exists) {
+                        const displayName = doc.data().displayName;
+                        userDisplayName.textContent = displayName;
+                        userInitial.textContent = getInitials(displayName);
+                        document.querySelectorAll('.mobile-user-name').forEach(el => {
+                            el.textContent = displayName;
+                        });
+                        document.querySelectorAll('.mobile-user-initial').forEach(el => {
+                            el.textContent = getInitials(displayName);
+                        });
+                    } else {
+                        userDisplayName.textContent = user.email;
+                        userInitial.textContent = getInitials(user.email);
+                        document.querySelectorAll('.mobile-user-name').forEach(el => {
+                            el.textContent = user.email;
+                        });
+                        document.querySelectorAll('.mobile-user-initial').forEach(el => {
+                            el.textContent = getInitials(user.email);
+                        });
+                    }
+                });
+                
+                // Update date and time
+                updateDateTime();
+                setInterval(updateDateTime, 60000); // Update every minute
+                
+                // Load tasks
+                loadTasks();
+                
+                // Load notifications
+                loadNotifications();
+                
+                // Set up real-time listeners
+                setupRealTimeListeners();
+            } else {
+                // User is signed out
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        });
+        
+        // Tab Switching
+        loginTabBtn.addEventListener('click', () => {
+            loginTabBtn.classList.add('tab-active');
+            registerTabBtn.classList.remove('tab-active');
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+        });
+        
+        registerTabBtn.addEventListener('click', () => {
+            registerTabBtn.classList.add('tab-active');
+            loginTabBtn.classList.remove('tab-active');
+            registerForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+        });
+        
+        // Mobile Menu Toggle
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // Login Form
+        loginForm.addEventListener('submit', e => {
+            e.preventDefault();
+            showLoading();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(error => {
+                    hideLoading();
+                    showError(`Erro ao fazer login: ${error.message}`);
+                });
+        });
+        
+        // Register Form
+        registerForm.addEventListener('submit', e => {
+            e.preventDefault();
+            showLoading();
+            
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    // Save user profile
+                    return db.collection('users').doc(userCredential.user.uid).set({
+                        displayName: name,
+                        email: email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                })
+                .catch(error => {
+                    hideLoading();
+                    showError(`Erro ao criar conta: ${error.message}`);
+                });
+        });
+        
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut().catch(error => {
+                showError(`Erro ao sair: ${error.message}`);
+            });
+        });
+        
+        mobileLogoutBtn.addEventListener('click', () => {
+            auth.signOut().catch(error => {
+                showError(`Erro ao sair: ${error.message}`);
+            });
+        });
+        
+        // Load Tasks
+        function loadTasks() {
+            tasksList.innerHTML = '<div class="flex justify-center py-8"><div class="loader h-10 w-10 rounded-full border-4 border-gray-200"></div></div>';
+            
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            // Check if we need to generate default tasks
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists && !doc.data().defaultTasksGenerated) {
+                    // Generate default tasks
+                    const batch = db.batch();
+                    
+                    // Daily tasks
+                    batch.set(db.collection('tasks').doc(), {
+                        description: "Lavar os pratos",
+                        assignee: "Família",
+                        frequency: "daily",
+                        userId: user.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    batch.set(db.collection('tasks').doc(), {
+                        description: "Fazer comida",
+                        assignee: "Família",
+                        frequency: "daily",
+                        userId: user.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Weekly tasks (Monday and Friday)
+                    batch.set(db.collection('tasks').doc(), {
+                        description: "Lavar o banheiro",
+                        assignee: "Família",
+                        frequency: "weekly",
+                        daysOfWeek: [1, 5], // Monday and Friday
+                        userId: user.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Mark as generated
+                    batch.update(db.collection('users').doc(user.uid), {
+                        defaultTasksGenerated: true
+                    });
+                    
+                    return batch.commit();
+                }
+            }).then(() => {
+                // Now load tasks for today
+                displayTodaysTasks();
+            }).catch(error => {
+                console.error("Error setting up tasks:", error);
+                tasksList.innerHTML = '<p class="text-red-500 text-center py-4">Erro ao carregar tarefas.</p>';
+            });
+        }
+        
+        // Display Today's Tasks
+        function displayTodaysTasks() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            
+            // Query for daily tasks and weekly tasks for today
+            const tasksRef = db.collection('tasks');
+            
+            // Get daily tasks
+            const dailyTasksQuery = tasksRef.where('userId', '==', user.uid)
+                                          .where('frequency', '==', 'daily');
+            
+            // Get weekly tasks for today
+            const weeklyTasksQuery = tasksRef.where('userId', '==', user.uid)
+                                           .where('frequency', '==', 'weekly')
+                                           .where('daysOfWeek', 'array-contains', dayOfWeek);
+            
+            // Execute both queries
+            Promise.all([
+                dailyTasksQuery.get(),
+                weeklyTasksQuery.get()
+            ]).then(([dailySnapshot, weeklySnapshot]) => {
+                // Combine results
+                const tasks = [];
+                
+                dailySnapshot.forEach(doc => {
+                    tasks.push({ id: doc.id, ...doc.data() });
+                });
+                
+                weeklySnapshot.forEach(doc => {
+                    tasks.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Check task completion status for today
+                const dateStr = formatDate(today);
+                
+                db.collection('taskCompletions')
+                  .where('userId', '==', user.uid)
+                  .where('date', '==', dateStr)
+                  .get()
+                  .then(completionsSnapshot => {
+                    const completions = {};
+                    completionsSnapshot.forEach(doc => {
+                        completions[doc.data().taskId] = {
+                            completedBy: doc.data().completedBy,
+                            completedAt: doc.data().completedAt
+                        };
+                    });
+                    
+                    // Render tasks
+                    renderTasks(tasks, completions);
+                });
+            }).catch(error => {
+                console.error("Error getting tasks:", error);
+                tasksList.innerHTML = '<p class="text-red-500 text-center py-4">Erro ao carregar tarefas.</p>';
+            });
+        }
+        
+        // Render Tasks
+        function renderTasks(tasks, completions) {
+            if (tasks.length === 0) {
+                tasksList.innerHTML = '<div class="text-center py-8"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg><p class="text-gray-500">Nenhuma tarefa para hoje.</p><p class="text-gray-400 text-sm mt-1">Adicione uma nova tarefa para começar.</p></div>';
+                updateTasksProgress(0, 0);
+                return;
+            }
+            
+            tasksList.innerHTML = '';
+            
+            let completed = 0;
+            let pending = 0;
+            
+            tasks.forEach(task => {
+                const isCompleted = completions[task.id] !== undefined;
+                if (isCompleted) {
+                    completed++;
+                } else {
+                    pending++;
+                }
+                
+                const taskItem = document.createElement('div');
+                taskItem.className = `task-item p-4 rounded-lg border border-gray-100 ${isCompleted ? 'completed' : ''} slide-in`;
+                
+                const taskContent = `
+                    <div class="flex items-center">
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                <h3 class="font-medium text-gray-800 ${isCompleted ? 'line-through text-gray-500' : ''}">${task.description}</h3>
+                                ${isCompleted ? 
+                                    `<span class="ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">Concluída</span>` : 
+                                    ''}
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">Responsável: ${task.assignee}</p>
+                            ${isCompleted ? 
+                                `<p class="text-xs text-green-600 mt-1">✓ Concluída por ${completions[task.id].completedBy}</p>` : 
+                                ''}
+                        </div>
+                        ${!isCompleted ? 
+                            `<button class="complete-task-btn ml-4 px-3 py-1 rounded-md text-sm font-medium text-white btn-success flex items-center" data-task-id="${task.id}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Concluir
+                            </button>` : 
+                            ''}
+                    </div>
+                `;
+                
+                taskItem.innerHTML = taskContent;
+                tasksList.appendChild(taskItem);
+                
+                // Add event listener to complete button
+                if (!isCompleted) {
+                    const completeBtn = taskItem.querySelector('.complete-task-btn');
+                    completeBtn.addEventListener('click', () => completeTask(task.id, task.description));
+                }
+            });
+            
+            // Update progress
+            updateTasksProgress(completed, tasks.length);
+        }
+        
+        // Update Tasks Progress
+        function updateTasksProgress(completed, total) {
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            completedTasksCount.textContent = `${completed} concluídas`;
+            pendingTasksCount.textContent = `${total - completed} pendentes`;
+            progressBar.style.width = `${percentage}%`;
+            progressPercentage.textContent = `${percentage}%`;
+        }
+        
+        // Complete Task
+        function completeTask(taskId, taskDescription) {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            // Get user name
+            db.collection('users').doc(user.uid).get().then(doc => {
+                const userName = doc.exists ? doc.data().displayName : user.email;
+                const today = new Date();
+                const dateStr = formatDate(today);
+                
+                // Mark task as completed
+                return db.collection('taskCompletions').add({
+                    taskId: taskId,
+                    userId: user.uid,
+                    completedBy: userName,
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    date: dateStr
+                });
+            }).then(() => {
+                // Create notification
+                return createNotification(`✅ ${userDisplayName.textContent} concluiu "${taskDescription}"`);
+            }).then(() => {
+                // Refresh tasks
+                displayTodaysTasks();
+            }).catch(error => {
+                console.error("Error completing task:", error);
+                showError("Erro ao concluir tarefa.");
+            });
+        }
+        
+        // Show/Hide Add Task Form
+        showAddTaskBtn.addEventListener('click', () => {
+            addTaskFormContainer.classList.remove('hidden');
+            addTaskFormContainer.classList.add('fade-in');
+        });
+        
+        cancelAddTaskBtn.addEventListener('click', () => {
+            addTaskFormContainer.classList.add('hidden');
+            // Clear form
+            document.getElementById('taskDescription').value = '';
+            document.getElementById('taskAssignee').value = '';
+        });
+        
+        // Add Task Form
+        addTaskForm.addEventListener('submit', e => {
+            e.preventDefault();
+            
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            const description = document.getElementById('taskDescription').value;
+            const assignee = document.getElementById('taskAssignee').value;
+            const frequency = document.getElementById('taskFrequency').value;
+            
+            // Add task to Firestore
+            db.collection('tasks').add({
+                description: description,
+                assignee: assignee,
+                frequency: frequency,
+                userId: user.uid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                // Clear form and hide it
+                document.getElementById('taskDescription').value = '';
+                document.getElementById('taskAssignee').value = '';
+                addTaskFormContainer.classList.add('hidden');
+                
+                // Create notification
+                return createNotification(`📝 Nova tarefa adicionada: "${description}"`);
+            }).then(() => {
+                // Refresh tasks
+                displayTodaysTasks();
+            }).catch(error => {
+                console.error("Error adding task:", error);
+                showError("Erro ao adicionar tarefa.");
+            });
+        });
+        
+        // Add Medication Field
+        addMedicationBtn.addEventListener('click', () => {
+            const medicationField = document.createElement('div');
+            medicationField.className = 'flex space-x-2 fade-in';
+            medicationField.innerHTML = `
+                <input type="text" placeholder="Nome do remédio" class="medication-name flex-1 health-input px-4 py-3 focus:outline-none">
+                <input type="time" class="medication-time w-24 health-input px-2 py-3 focus:outline-none">
+            `;
+            medicationsList.appendChild(medicationField);
+        });
+        
+        // Generate Health Report
+        generateReportBtn.addEventListener('click', () => {
+            const glucose = document.getElementById('glucose').value;
+            const pressure = document.getElementById('pressure').value;
+            
+            // Get medications
+            const medications = [];
+            const medicationNames = document.querySelectorAll('.medication-name');
+            const medicationTimes = document.querySelectorAll('.medication-time');
+            
+            for (let i = 0; i < medicationNames.length; i++) {
+                const name = medicationNames[i].value.trim();
+                const time = medicationTimes[i].value;
+                
+                if (name && time) {
+                    medications.push({ name, time });
+                }
+            }
+            
+            // Generate report
+            const now = new Date();
+            const dateTimeStr = formatDateTime(now);
+            
+            let report = `🩺 Boletim da Joselia (${dateTimeStr})\n`;
+            
+            if (glucose) {
+                report += `- Glicose: ${glucose} mg/dL\n`;
+            }
+            
+            if (pressure) {
+                report += `- Pressão: ${pressure}\n`;
+            }
+            
+            if (medications.length > 0) {
+                report += `- Remédios tomados:\n`;
+                medications.forEach(med => {
+                    report += `  • ${med.name} às ${med.time}\n`;
+                });
+            }
+            
+            // Display report
+            reportContent.textContent = report;
+            healthReport.classList.remove('hidden');
+            healthReport.classList.add('fade-in');
+            
+            // Save report to Firestore
+            const user = auth.currentUser;
+            if (user) {
+                db.collection('healthReports').add({
+                    userId: user.uid,
+                    glucose: glucose || null,
+                    pressure: pressure || null,
+                    medications: medications,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    reportText: report
+                }).then(() => {
+                    // Create notification
+                    return createNotification("🩺 Novo boletim de saúde gerado");
+                }).catch(error => {
+                    console.error("Error saving health report:", error);
+                });
+            }
+        });
+        
+        // Share on WhatsApp
+        shareWhatsappBtn.addEventListener('click', () => {
+            const reportText = reportContent.textContent;
+            const encodedText = encodeURIComponent(reportText);
+            const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+            window.open(whatsappUrl, '_blank');
+        });
+        
+        // Notifications Panel Toggle
+        notificationBtn.addEventListener('click', () => {
+            notificationsPanel.classList.remove('hidden');
+            notificationBadge.classList.add('hidden');
+            notificationBadge.textContent = '0';
+            
+            // Mark all notifications as read
+            const user = auth.currentUser;
+            if (user) {
+                db.collection('notifications')
+                  .where('userId', '==', user.uid)
+                  .where('read', '==', false)
+                  .get()
+                  .then(snapshot => {
+                    const batch = db.batch();
+                    snapshot.forEach(doc => {
+                        batch.update(doc.ref, { read: true });
+                    });
+                    return batch.commit();
+                  })
+                  .catch(error => {
+                    console.error("Error marking notifications as read:", error);
+                  });
+            }
+        });
+        
+        closeNotificationsBtn.addEventListener('click', () => {
+            notificationsPanel.classList.add('hidden');
+        });
+        
+        // Create Notification
+        function createNotification(message) {
+            const user = auth.currentUser;
+            if (!user) return Promise.reject("User not logged in");
+            
+            return db.collection('notifications').add({
+                userId: user.uid,
+                message: message,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            });
+        }
+        
+        // Load Notifications
+        function loadNotifications() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            db.collection('notifications')
+              .where('userId', '==', user.uid)
+              .orderBy('createdAt', 'desc')
+              .limit(20)
+              .get()
+              .then(snapshot => {
+                renderNotifications(snapshot);
+                updateNotificationBadge();
+              })
+              .catch(error => {
+                console.error("Error loading notifications:", error);
+              });
+        }
+        
+        // Render Notifications
+        function renderNotifications(snapshot) {
+            if (snapshot.empty) {
+                notificationsList.innerHTML = '<div class="text-center py-8"><svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg><p class="text-gray-500">Nenhuma notificação.</p></div>';
+                return;
+            }
+            
+            notificationsList.innerHTML = '';
+            
+            snapshot.forEach(doc => {
+                const notification = doc.data();
+                const notificationEl = document.createElement('div');
+                notificationEl.className = `p-3 rounded-lg border ${notification.read ? 'bg-white border-gray-100' : 'bg-orange-50 border-orange-100'} slide-in`;
+                
+                const createdAt = notification.createdAt ? notification.createdAt.toDate() : new Date();
+                const timeStr = formatTime(createdAt);
+                
+                notificationEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="text-gray-800">${notification.message}</div>
+                        <div class="text-xs text-gray-500 ml-2">${timeStr}</div>
+                    </div>
+                `;
+                
+                notificationsList.appendChild(notificationEl);
+            });
+        }
+        
+        // Update Notification Badge
+        function updateNotificationBadge() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            db.collection('notifications')
+              .where('userId', '==', user.uid)
+              .where('read', '==', false)
+              .get()
+              .then(snapshot => {
+                const count = snapshot.size;
+                if (count > 0) {
+                    notificationBadge.textContent = count > 9 ? '9+' : count;
+                    notificationBadge.classList.remove('hidden');
+                } else {
+                    notificationBadge.classList.add('hidden');
+                }
+              })
+              .catch(error => {
+                console.error("Error counting unread notifications:", error);
+              });
+        }
+        
+        // Setup Real-Time Listeners
+        function setupRealTimeListeners() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            // Listen for task completions
+            const unsubscribeTaskCompletions = db.collection('taskCompletions')
+                .where('userId', '==', user.uid)
+                .onSnapshot(() => {
+                    displayTodaysTasks();
+                }, error => {
+                    console.error("Error listening for task completions:", error);
+                });
+            
+            // Listen for new tasks
+            const unsubscribeTasks = db.collection('tasks')
+                .where('userId', '==', user.uid)
+                .onSnapshot(() => {
+                    displayTodaysTasks();
+                }, error => {
+                    console.error("Error listening for tasks:", error);
+                });
+            
+            // Listen for notifications
+            const unsubscribeNotifications = db.collection('notifications')
+                .where('userId', '==', user.uid)
+                .orderBy('createdAt', 'desc')
+                .limit(20)
+                .onSnapshot(snapshot => {
+                    renderNotifications(snapshot);
+                    updateNotificationBadge();
+                }, error => {
+                    console.error("Error listening for notifications:", error);
+                });
+            
+            // Store unsubscribe functions
+            window.unsubscribeFunctions = [
+                unsubscribeTaskCompletions,
+                unsubscribeTasks,
+                unsubscribeNotifications
+            ];
+        }
+        
+        // Cleanup listeners on logout
+        logoutBtn.addEventListener('click', () => {
+            if (window.unsubscribeFunctions) {
+                window.unsubscribeFunctions.forEach(unsubscribe => {
+                    if (typeof unsubscribe === 'function') {
+                        unsubscribe();
+                    }
+                });
+            }
+        });
+        
+        mobileLogoutBtn.addEventListener('click', () => {
+            if (window.unsubscribeFunctions) {
+                window.unsubscribeFunctions.forEach(unsubscribe => {
+                    if (typeof unsubscribe === 'function') {
+                        unsubscribe();
+                    }
+                });
+            }
+        });
+        
+        // Close notifications panel when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!notificationsPanel.classList.contains('hidden') && 
+                !notificationsPanel.contains(e.target) && 
+                !notificationBtn.contains(e.target)) {
+                notificationsPanel.classList.add('hidden');
+            }
+        });
+
+        // Tabs switching logic
+        const tabToday = document.getElementById('tabToday');
+        const tabHistory = document.getElementById('tabHistory');
+        const todayTasksSection = document.getElementById('todayTasksSection');
+        const historyTasksSection = document.getElementById('historyTasksSection');
+        const historyList = document.getElementById('historyList');
+        const historyDateFilter = document.getElementById('historyDateFilter');
+
+        tabToday.addEventListener('click', () => {
+            tabToday.classList.add('tab-active');
+            tabHistory.classList.remove('tab-active');
+            todayTasksSection.classList.remove('hidden');
+            historyTasksSection.classList.add('hidden');
+        });
+        tabHistory.addEventListener('click', () => {
+            tabHistory.classList.add('tab-active');
+            tabToday.classList.remove('tab-active');
+            todayTasksSection.classList.add('hidden');
+            historyTasksSection.classList.remove('hidden');
+            loadHistoryTasks();
+        });
+        if (historyDateFilter) {
+            historyDateFilter.addEventListener('change', () => {
+                loadHistoryTasks();
+            });
+        }
+
+        // Load history of completed tasks
+        function loadHistoryTasks() {
+            historyList.innerHTML = '<div class="flex justify-center py-8"><div class="loader h-10 w-10 rounded-full border-4 border-gray-200"></div></div>';
+            const user = auth.currentUser;
+            if (!user) return;
+            let dateStr = historyDateFilter && historyDateFilter.value ?
+                new Date(historyDateFilter.value + 'T00:00:00') : new Date();
+            if (historyDateFilter && historyDateFilter.value) {
+                dateStr = formatDate(new Date(historyDateFilter.value + 'T00:00:00'));
+            } else {
+                dateStr = null;
+            }
+            let query = db.collection('taskCompletions').where('userId', '==', user.uid);
+            if (dateStr) {
+                query = query.where('date', '==', dateStr);
+            }
+            query.orderBy('completedAt', 'desc').limit(30).get().then(async snapshot => {
+                if (snapshot.empty) {
+                    historyList.innerHTML = '<div class="text-center py-8 text-gray-400">Nenhuma tarefa concluída encontrada para esta data.</div>';
+                    return;
+                }
+                historyList.innerHTML = '';
+                // Buscar descrições das tarefas
+                const taskIds = [];
+                const completions = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    completions.push({id: doc.id, ...data});
+                    if (data.taskId) taskIds.push(data.taskId);
+                });
+                // Buscar todas as tasks de uma vez
+                let tasksMap = {};
+                if (taskIds.length > 0) {
+                    const tasksSnapshot = await db.collection('tasks').where(firebase.firestore.FieldPath.documentId(), 'in', taskIds.slice(0,10)).get();
+                    tasksSnapshot.forEach(doc => {
+                        tasksMap[doc.id] = doc.data();
+                    });
+                    if (taskIds.length > 10) {
+                        const tasksSnapshot2 = await db.collection('tasks').where(firebase.firestore.FieldPath.documentId(), 'in', taskIds.slice(10,20)).get();
+                        tasksSnapshot2.forEach(doc => {
+                            tasksMap[doc.id] = doc.data();
+                        });
+                    }
+                }
+                completions.forEach(data => {
+                    const item = document.createElement('div');
+                    item.className = 'task-item completed p-4 rounded-lg border border-green-100 bg-green-50 flex flex-col md:flex-row md:items-center justify-between slide-in';
+                    const completedAt = data.completedAt && data.completedAt.toDate ? formatDateTime(data.completedAt.toDate()) : '';
+                    const taskDesc = tasksMap[data.taskId]?.description || '(Tarefa removida)';
+                    item.innerHTML = `
+                        <div>
+                            <div class=\"font-medium text-gray-800\">${taskDesc}</div>
+                            <div class=\"text-xs text-gray-500 mt-1\">Concluída por <span class=\"font-semibold\">${data.completedBy}</span> em ${completedAt}</div>
+                        </div>
+                    `;
+                    historyList.appendChild(item);
+                });
+            }).catch(error => {
+                historyList.innerHTML = '<div class="text-center py-8 text-red-500">Erro ao carregar histórico.<br><span style="font-size:12px;">' + (error && error.message ? error.message : '') + '</span></div>';
+            });
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'962be66d97628a83',t:'MTc1MzExMzUxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
