@@ -657,6 +657,12 @@
         </main>
     </div>
 
+    <button id="enableNotificationsBtn" class="fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-white btn-success hidden">
+        🔔 Ativar Notificações
+    </button>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+
     <script>
         // Initialize Firebase
         const firebaseConfig = {
@@ -710,6 +716,7 @@
         const closeNotificationsBtn = document.getElementById('closeNotificationsBtn');
         const notificationsList = document.getElementById('notificationsList');
         const notificationBadge = document.getElementById('notificationBadge');
+        const enableNotificationsBtn = document.getElementById('enableNotificationsBtn');
         
         // Helper Functions
         function showLoading() {
@@ -1522,6 +1529,53 @@
                 historyList.innerHTML = '<div class="text-center py-8 text-red-500">Erro ao carregar histórico.<br><span style="font-size:12px;">' + (error && error.message ? error.message : '') + '</span></div>';
             });
         }
+
+        const messaging = firebase.messaging();
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                .then((registration) => {
+                    messaging.useServiceWorker(registration);
+                });
+        }
+        // Botão para ativar notificações
+        function showEnableNotificationsBtn() {
+            enableNotificationsBtn.classList.remove('hidden');
+        }
+        function hideEnableNotificationsBtn() {
+            enableNotificationsBtn.classList.add('hidden');
+        }
+        // Mostrar botão após login
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                setTimeout(showEnableNotificationsBtn, 2000);
+            } else {
+                hideEnableNotificationsBtn();
+            }
+        });
+        // Solicitar permissão e obter token
+        enableNotificationsBtn.addEventListener('click', () => {
+            messaging.requestPermission()
+                .then(() => messaging.getToken())
+                .then((token) => {
+                    // Salvar token no Firestore
+                    const user = auth.currentUser;
+                    if (user) {
+                        db.collection('users').doc(user.uid).update({ fcmToken: token });
+                    }
+                    alert('Notificações ativadas!');
+                    hideEnableNotificationsBtn();
+                })
+                .catch((err) => {
+                    alert('Permissão negada ou erro ao ativar notificações.');
+                });
+        });
+        // Receber notificações em foreground
+        messaging.onMessage((payload) => {
+            if (payload.notification) {
+                alert(payload.notification.title + '\n' + payload.notification.body);
+            }
+        });
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'962be66d97628a83',t:'MTc1MzExMzUxMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
